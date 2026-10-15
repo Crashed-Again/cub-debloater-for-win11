@@ -47,11 +47,11 @@ The version in the app's sidebar, the file Properties and the .msi file name all
 
 | Page | What you can control |
 |---|---|
-| **Appearance** | Dark mode, taskbar icons left, Explorer opens to This PC, wallpaper (built-in or your own), mouse acceleration off, Sticky Keys off, show file extensions (on by default), classic right-click menu (on by default) |
+| **Appearance** | Dark mode, taskbar icons left, Explorer opens to This PC, wallpaper (Landscape layers by default, the NEONBEAR dot-matrix image, or your own file), mouse acceleration off, Sticky Keys off, show file extensions (on by default), classic right-click menu (on by default) |
 | **AI** | Remove Copilot, disable Recall and Click to Do, no web results in Start search |
 | **Apps** | Master switch plus one switch per built-in app (about 35), and a box to add your own package name (wildcards like `*Spotify*` work) |
 | **Start menu** | Hide Recommended, grid view for All apps, and which apps stay pinned |
-| **Privacy and security** | Telemetry, location tracking, Smart App Control, BitLocker, hibernation |
+| **Privacy and security** | Telemetry, location tracking, Xbox Game Bar / the ms-gamingoverlay popup (on by default), Smart App Control, BitLocker, hibernation |
 | **Performance** | Ultimate Performance power plan |
 | **Software** | QuickLook (Space to preview a file), browser picker (Google Chrome by default), optional browser update, remove Edge, a winget app search, and the list of apps to install |
 | **Apply** | Restore point switch, progress bar, live log, Restart PC button |
@@ -87,6 +87,7 @@ Calculator, Clock, Notepad and the Microsoft Store are not in the removal list. 
 
 - **Fonts:** the UI uses Poppins (the font Upscayl uses) if it is installed, otherwise Segoe UI. Install Poppins from Google Fonts for the closest look.
 - **Default browser:** Windows does not let programs set the default browser silently. Cub installs the browser; you confirm it as default in Settings > Apps > Default apps (or in the browser's own prompt).
+- **ms-gamingoverlay popup:** if Windows shows "you need a new app to open this ms-gamingoverlay link" (common after Xbox apps are removed), the Game Bar switch on the Privacy page turns Game Bar off and registers the link so the popup stops. It is best-effort; sign out and back in if it still shows once.
 - **BitLocker:** drives get decrypted. This can take a long time and runs in the background.
 - **Smart App Control:** once off, it cannot be turned back on without resetting Windows.
 - **Hibernation:** turning it off also turns off Fast Startup.
@@ -112,7 +113,8 @@ Use the restore point for most changes. Removed apps can be reinstalled from the
 | `WingetSearch.cs` | Runs `winget search` and reads the results |
 | `app.manifest` | Asks Windows for administrator rights |
 | `icon.ico` | The Cub icon (embedded, also used for the exe file itself) |
-| `wallpaper.png` | The NEONBEAR wallpaper, embedded into the exe |
+| `wallpaper-landscape.png` | The default wallpaper (Landscape layers), embedded into the exe |
+| `wallpaper.png` | The NEONBEAR dot-matrix wallpaper, embedded into the exe |
 | `build.bat` | One-click build of the .exe |
 | `build-msi.bat` | Builds the .exe and the installable .msi |
 | `installer\Installer.wxs` | WiX definition of the installer (install folder, shortcuts, uninstall entry) |

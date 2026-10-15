@@ -21,7 +21,7 @@
     <Copyright>Copyright (c) 2026 NeonBear</Copyright>
 
     <!-- THE VERSION: change this one line. The app sidebar, file Properties and the .msi all follow it. -->
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
 
     <!-- one self-contained .exe, no .NET install needed on the target PC -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -32,6 +32,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="wallpaper-landscape.png" LogicalName="wallpaper-landscape.png" />
     <EmbeddedResource Include="wallpaper.png" LogicalName="wallpaper.png" />
     <EmbeddedResource Include="icon.ico" LogicalName="icon.ico" />
   </ItemGroup>

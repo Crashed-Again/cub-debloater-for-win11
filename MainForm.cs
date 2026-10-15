@@ -37,6 +37,7 @@ namespace Cub
         public List<string> CustomApps { get; set; } = new List<string>();
         public string Browser { get; set; } = "";
         public string Wallpaper { get; set; } = "";
+        public int WallpaperBuiltin { get; set; } = 0;
         public string Extras { get; set; } = "";
     }
 
@@ -129,6 +130,7 @@ namespace Cub
         private NButton _searchBtn;
         private Label _searchStatus;
         private Label _wpLabel, _status;
+        private ComboBox _wpBuiltin;
         private string _wallpaper = "";
         private RichTextBox _log;
         private ThinProgress _prog;
@@ -369,23 +371,30 @@ namespace Cub
             AddToggle(p, "dark", "Appearance", "Dark mode", "Apps and Windows itself use the dark theme.", true);
             AddToggle(p, "left", "Appearance", "Taskbar icons on the left", "Windows 10 style alignment. Off = keep centered.", true);
             AddToggle(p, "thispc", "Appearance", "File Explorer opens to This PC", "Instead of Home / Quick access.", true);
-            AddToggle(p, "wallpaper", "Appearance", "Set wallpaper", "Uses the NEONBEAR dot-matrix image unless you pick your own below.", true);
+            AddToggle(p, "wallpaper", "Appearance", "Set wallpaper", "Uses the Landscape layers image unless you pick another below.", true);
 
-            var card = new Card { Height = S(70), Margin = new Padding(0, 0, 0, S(8)) };
-            var cap = new Label { Text = "Wallpaper image", Font = Theme.Bold, ForeColor = Theme.Text, BackColor = Theme.Card, AutoSize = false, Left = S(18), Top = S(11), Height = S(24), Width = S(300) };
-            _wpLabel = new Label { Text = "Built-in NEONBEAR wallpaper", Font = Theme.Small, ForeColor = Theme.Sub, BackColor = Theme.Card, AutoSize = false, AutoEllipsis = true, Left = S(18), Top = S(38), Height = S(22) };
+            var card = new Card { Height = S(108), Margin = new Padding(0, 0, 0, S(8)) };
+            var cap = new Label { Text = "Wallpaper image", Font = Theme.Bold, ForeColor = Theme.Text, BackColor = Theme.Card, AutoSize = false, Left = S(18), Top = S(14), Height = S(24), Width = S(220) };
+            _wpBuiltin = new ComboBox { Width = S(280), Top = S(12) };
+            StyleCombo(_wpBuiltin);
+            _wpBuiltin.Items.AddRange(new object[] { "Landscape layers (default)", "NEONBEAR dot-matrix" });
+            _wpBuiltin.SelectedIndex = 0;
+            _wpBuiltin.SelectionChangeCommitted += (s, e) => { _wallpaper = ""; UpdateWallpaperLabel(); };
+            _wpLabel = new Label { Font = Theme.Small, ForeColor = Theme.Sub, BackColor = Theme.Card, AutoSize = false, AutoEllipsis = true, Left = S(18), Height = S(22), Top = S(68) };
             var choose = new NButton { Text = "Choose...", Width = S(110), Height = S(34), BackColor = Theme.Card };
             var reset = new NButton { Text = "Reset", Width = S(80), Height = S(34), BackColor = Theme.Card };
             choose.Click += (s, e) => ChooseWallpaper();
-            reset.Click += (s, e) => { _wallpaper = ""; _wpLabel.Text = "Built-in NEONBEAR wallpaper"; };
-            card.Controls.AddRange(new Control[] { cap, _wpLabel, choose, reset });
+            reset.Click += (s, e) => { _wallpaper = ""; _wpBuiltin.SelectedIndex = 0; UpdateWallpaperLabel(); };
+            card.Controls.AddRange(new Control[] { cap, _wpBuiltin, _wpLabel, choose, reset });
             card.SizeChanged += (s, e) =>
             {
+                _wpBuiltin.Left = card.Width - _wpBuiltin.Width - S(20);
                 reset.Left = card.Width - reset.Width - S(20);
                 choose.Left = reset.Left - choose.Width - S(8);
-                reset.Top = choose.Top = (card.Height - choose.Height) / 2;
+                reset.Top = choose.Top = S(62);
                 _wpLabel.Width = Math.Max(S(60), choose.Left - S(34));
             };
+            UpdateWallpaperLabel();
             p.Controls.Add(card);
 
             AddToggle(p, "mouse", "Appearance", "Mouse acceleration off", "Turns off \"Enhance pointer precision\" so the cursor moves 1:1.", true);
@@ -479,6 +488,7 @@ namespace Cub
             var p = NewPage("Privacy and security", "Privacy and security", "Some of these are one-way trips, so they are flagged.");
             AddToggle(p, "telemetry", "Privacy", "Disable telemetry", "Stops the tracking service and tasks. Home and Pro still send a minimal level - a Windows limit.", true);
             AddToggle(p, "location", "Privacy", "Disable location tracking", "Turns off location services for the whole PC.", true);
+            AddToggle(p, "gamebar", "Privacy", "Disable Xbox Game Bar (ms-gamingoverlay popup)", "Stops the \"you need a new app to open this ms-gamingoverlay link\" popup, e.g. after Xbox apps are removed.", true);
             AddToggle(p, "sac", "Privacy", "Disable Smart App Control", "Caution: can not be turned back on without resetting Windows.", true, true);
             AddToggle(p, "bitlocker", "Privacy", "Disable BitLocker / device encryption", "Caution: DECRYPTS your drives (slow, runs in the background).", true, true);
             AddToggle(p, "hibernate", "Privacy", "Disable hibernation", "Frees disk space. Also turns off Fast Startup.", true, true);
@@ -713,6 +723,12 @@ namespace Cub
             }
         }
 
+        private void UpdateWallpaperLabel()
+        {
+            if (_wpLabel == null) return;
+            _wpLabel.Text = string.IsNullOrEmpty(_wallpaper) ? "Using the built-in image selected above" : _wallpaper;
+        }
+
         private void ChooseWallpaper()
         {
             using (var dlg = new OpenFileDialog { Title = "Pick a wallpaper", Filter = "Images|*.png;*.jpg;*.jpeg;*.bmp" })
@@ -720,7 +736,7 @@ namespace Cub
                 if (dlg.ShowDialog(this) == DialogResult.OK)
                 {
                     _wallpaper = dlg.FileName;
-                    _wpLabel.Text = dlg.FileName;
+                    UpdateWallpaperLabel();
                     if (_t.ContainsKey("wallpaper")) _t["wallpaper"].Checked = true;
                 }
             }
@@ -733,6 +749,7 @@ namespace Cub
             pr.CustomApps = new List<string>(_customApps);
             pr.Browser = ((BrowserChoice)_browser.SelectedItem).Id;
             pr.Wallpaper = _wallpaper;
+            pr.WallpaperBuiltin = _wpBuiltin.SelectedIndex;
             pr.Extras = _extras.Text;
             return pr;
         }
@@ -745,7 +762,8 @@ namespace Cub
             for (int i = 0; i < _browser.Items.Count; i++)
                 if (((BrowserChoice)_browser.Items[i]).Id == pr.Browser) { _browser.SelectedIndex = i; break; }
             _wallpaper = pr.Wallpaper ?? "";
-            _wpLabel.Text = string.IsNullOrEmpty(_wallpaper) ? "Built-in NEONBEAR wallpaper" : _wallpaper;
+            if (pr.WallpaperBuiltin >= 0 && pr.WallpaperBuiltin < _wpBuiltin.Items.Count) _wpBuiltin.SelectedIndex = pr.WallpaperBuiltin;
+            UpdateWallpaperLabel();
             _extras.Text = pr.Extras ?? "";
         }
 
@@ -804,6 +822,7 @@ namespace Cub
             o.BrowserId = b.Id;
             o.BrowserName = b.Name;
             o.WallpaperPath = _wallpaper;
+            o.WallpaperBuiltin = _wpBuiltin.SelectedIndex;
             o.ExtraIds = _extras.Text;
             return o;
         }

@@ -22,6 +22,7 @@ namespace Cub
         public string BrowserId = "";
         public string BrowserName = "";
         public string WallpaperPath = "";
+        public int WallpaperBuiltin = 0;   // 0 = landscape layers, 1 = NEONBEAR dot-matrix
         public string ExtraIds = "";
 
         public bool Has(string key) { return On.Contains(key); }
@@ -215,6 +216,7 @@ namespace Cub
             // privacy & security
             if (o.Has("telemetry")) add("Disabling telemetry", Telemetry);
             if (o.Has("location")) add("Disabling location tracking", Location);
+            if (o.Has("gamebar")) add("Disabling Xbox Game Bar / ms-gamingoverlay popup", GameBar);
             if (o.Has("sac")) add("Disabling Smart App Control", () =>
             {
                 SetReg(HKLM, @"SYSTEM\CurrentControlSet\Control\CI\Policy", "VerifiedAndReputablePolicyState", 0);
@@ -300,8 +302,9 @@ namespace Cub
             }
             else
             {
-                wp = Path.Combine(pictures, "Cub-wallpaper.png");
-                using (Stream s = Assembly.GetExecutingAssembly().GetManifestResourceStream("wallpaper.png"))
+                string resource = o.WallpaperBuiltin == 1 ? "wallpaper.png" : "wallpaper-landscape.png";
+                wp = Path.Combine(pictures, o.WallpaperBuiltin == 1 ? "Cub-wallpaper-neonbear.png" : "Cub-wallpaper-landscape.png");
+                using (Stream s = Assembly.GetExecutingAssembly().GetManifestResourceStream(resource))
                 using (FileStream f = File.Create(wp))
                     s.CopyTo(f);
             }
@@ -451,6 +454,23 @@ namespace Cub
             Run("sc.exe", "stop lfsvc");
             Run("sc.exe", "config lfsvc start= disabled");
             Ok("Location services off");
+        }
+
+        private void GameBar()
+        {
+            // switch the Game Bar / Game DVR features off
+            SetReg(HKCU, @"System\GameConfigStore", "GameDVR_Enabled", 0);
+            SetReg(HKCU, @"SOFTWARE\Microsoft\Windows\CurrentVersion\GameDVR", "AppCaptureEnabled", 0);
+            SetReg(HKLM, @"SOFTWARE\Policies\Microsoft\Windows\GameDVR", "AllowGameDVR", 0);
+            SetReg(HKCU, @"SOFTWARE\Microsoft\GameBar", "UseNexusForGameBarEnabled", 0);   // controller Guide button
+            SetReg(HKCU, @"SOFTWARE\Microsoft\GameBar", "ShowStartupPanel", 0);
+            // register the two links so Windows no longer asks "which app opens ms-gamingoverlay?"
+            foreach (string proto in new[] { "ms-gamingoverlay", "ms-gamebar" })
+            {
+                SetStr(HKLM, @"SOFTWARE\Classes\" + proto, "", "URL:" + proto);
+                SetStr(HKLM, @"SOFTWARE\Classes\" + proto, "URL Protocol", "");
+            }
+            Ok("Game Bar off and the ms-gamingoverlay popup silenced");
         }
 
         private void BitLocker()
