@@ -26,16 +26,6 @@ Double-click the .msi to install. It puts the app in `C:\Program Files\Cub`, add
 
 The installer is a plain one: no wizard pages, just a progress bar. Because the app asks for administrator rights, its shortcuts show the UAC shield.
 
-## Changing the version number
-
-Edit **one line** in `Cub.csproj`:
-
-```xml
-<Version>1.1.0</Version>
-```
-
-The version in the app's sidebar, the file Properties and the .msi file name all follow it. Use three numbers, like `1.2.0`. Rebuild afterwards.
-
 ## Using it
 
 1. Pick a page on the left and flip the switches you want. Anything switched off is left alone.
