@@ -73,7 +73,7 @@ Calculator, Clock, Notepad and the Microsoft Store are not in the removal list. 
 
 ## Things to know before you apply
 
-- **Fonts:** the UI uses Poppins (the font Upscayl uses) if it is installed, otherwise Segoe UI. Install Poppins from Google Fonts for the closest look.
+- **Fonts:** the UI uses Poppins if it is installed, otherwise Segoe UI. Install Poppins from Google Fonts for the closest look.
 - **Default browser:** Windows does not let programs set the default browser silently. Cub installs the browser; you confirm it as default in Settings > Apps > Default apps (or in the browser's own prompt).
 - **ms-gamingoverlay popup:** if Windows shows "you need a new app to open this ms-gamingoverlay link" (common after Xbox apps are removed), the Game Bar switch on the Privacy page turns Game Bar off and registers the link so the popup stops. It is best-effort; sign out and back in if it still shows once.
 - **BitLocker:** drives get decrypted. This can take a long time and runs in the background.
