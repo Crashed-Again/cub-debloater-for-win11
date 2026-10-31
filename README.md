@@ -1,8 +1,6 @@
 # Cub
 
-**Cub by NeonBear** - a Windows 11 debloater with a switch for every action. The look follows the Upscayl app: pure black sidebar, flat grey buttons, square toggles. One self-contained `.exe` with its own icon and name, no terminal window, no .NET install needed on the target PC.
-
-> **Status:** untested. The source was written without access to a Windows machine or the .NET SDK, so the first build may need a small fix. Run it on a spare PC or make a backup first.
+**Cub by NeonBear** - a Windows 11 debloater with a switch for every action. One self-contained `.exe` with its own icon and name, no terminal window, no .NET install needed on the target PC.
 
 Current version: **1.1.0**
 
