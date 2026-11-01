@@ -35,11 +35,11 @@ if errorlevel 1 goto fail
 
 echo.
 echo Done. Installer: %~dp0out\Cub-%VERSION%.msi
-pause
+if not defined CI pause
 exit /b 0
 
 :fail
 echo.
 echo Build failed. Scroll up for the error message.
-pause
+if not defined CI pause
 exit /b 1

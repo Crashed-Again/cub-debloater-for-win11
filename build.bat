@@ -4,4 +4,4 @@ dotnet publish -c Release -o out
 if errorlevel 1 (echo Build failed. & pause & exit /b 1)
 echo.
 echo Done. Your exe is: %~dp0out\Cub.exe
-pause
+if not defined CI pause

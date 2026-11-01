@@ -21,8 +21,9 @@ namespace Cub
         public List<string> Pins = new List<string>();
         public string BrowserId = "";
         public string BrowserName = "";
-        public string WallpaperPath = "";
-        public int WallpaperBuiltin = 0;   // 0 = landscape layers, 1 = NEONBEAR dot-matrix
+        public string WallpaperPath = "";    // a custom image file chosen by the user (wins over the built-in one)
+        public string WallpaperId = "";      // id of a built-in wallpaper
+        public List<string> RuntimeIds = new List<string>();   // winget ids of the runtimes to check
         public string ExtraIds = "";
 
         public bool Has(string key) { return On.Contains(key); }
@@ -244,6 +245,9 @@ namespace Cub
                 });
             }
 
+            if (o.Has("runtimes")) add("Installing missing runtimes", Runtimes);
+            if (o.Has("drivers")) add("Installing and updating drivers", Drivers);
+
             if (steps.Count > 0) add("Restarting Explorer", RestartExplorer);
 
             // LAST: browser
@@ -302,11 +306,13 @@ namespace Cub
             }
             else
             {
-                string resource = o.WallpaperBuiltin == 1 ? "wallpaper.png" : "wallpaper-landscape.png";
-                wp = Path.Combine(pictures, o.WallpaperBuiltin == 1 ? "Cub-wallpaper-neonbear.png" : "Cub-wallpaper-landscape.png");
-                using (Stream s = Assembly.GetExecutingAssembly().GetManifestResourceStream(resource))
-                using (FileStream f = File.Create(wp))
-                    s.CopyTo(f);
+                string id = string.IsNullOrEmpty(o.WallpaperId) ? WallpaperCatalog.DefaultId : o.WallpaperId;
+                wp = Path.Combine(pictures, "Cub-" + id + ".jpg");
+                using (Stream s = WallpaperCatalog.OpenFull(id))
+                {
+                    if (s == null) { Warn("Wallpaper '" + id + "' is missing from this build."); return; }
+                    using (FileStream f = File.Create(wp)) s.CopyTo(f);
+                }
             }
             const string desk = @"Control Panel\Desktop";
             SetStr(HKCU, desk, "WallpaperStyle", "10");   // Fill
@@ -464,13 +470,23 @@ namespace Cub
             SetReg(HKLM, @"SOFTWARE\Policies\Microsoft\Windows\GameDVR", "AllowGameDVR", 0);
             SetReg(HKCU, @"SOFTWARE\Microsoft\GameBar", "UseNexusForGameBarEnabled", 0);   // controller Guide button
             SetReg(HKCU, @"SOFTWARE\Microsoft\GameBar", "ShowStartupPanel", 0);
-            // register the two links so Windows no longer asks "which app opens ms-gamingoverlay?"
-            foreach (string proto in new[] { "ms-gamingoverlay", "ms-gamebar" })
+            SetReg(HKCU, @"SOFTWARE\Microsoft\GameBar", "AutoGameModeEnabled", 0);
+
+            // The "you need a new app to open this ms-gamingoverlay link" popup appears when Windows has no program for
+            // these links (the Xbox apps are gone). Register a handler that does nothing: rundll32 with no arguments
+            // starts and exits silently, so the popup never shows. Done for the whole PC and for the current user.
+            string noop = "\"" + Path.Combine(Environment.SystemDirectory, "rundll32.exe") + "\"";
+            foreach (string proto in new[] { "ms-gamingoverlay", "ms-gamebar", "ms-gamebarservices" })
             {
-                SetStr(HKLM, @"SOFTWARE\Classes\" + proto, "", "URL:" + proto);
-                SetStr(HKLM, @"SOFTWARE\Classes\" + proto, "URL Protocol", "");
+                foreach (RegistryKey hive in new[] { HKLM, HKCU })
+                {
+                    string key = @"SOFTWARE\Classes\" + proto;
+                    SetStr(hive, key, "", "URL:" + proto);
+                    SetStr(hive, key, "URL Protocol", "");
+                    SetStr(hive, key + @"\shell\open\command", "", noop);
+                }
             }
-            Ok("Game Bar off and the ms-gamingoverlay popup silenced");
+            Ok("Game Bar off and the ms-gamingoverlay popup silenced (sign out and back in if it still shows once)");
         }
 
         private void BitLocker()
@@ -508,6 +524,77 @@ namespace Cub
             {
                 Warn("This PC does not expose the Ultimate Performance plan (common on some laptops)");
             }
+        }
+
+        private void Runtimes()
+        {
+            if (!WingetAvailable())
+            {
+                Warn("winget not found - cannot check runtimes");
+                return;
+            }
+            if (o.RuntimeIds.Count == 0) { Info("No runtimes selected."); return; }
+            int installed = 0, present = 0, failed = 0;
+            foreach (string id in o.RuntimeIds.Distinct())
+            {
+                string ignored;
+                if (Exec("winget", "list --id " + id + " --exact --accept-source-agreements", false, out ignored) == 0)
+                {
+                    present++;
+                    Info(id + " - already installed");
+                    continue;
+                }
+                Info("Installing missing runtime " + id + "...");
+                Exec("winget", "install --id " + id + " --exact --silent --accept-package-agreements --accept-source-agreements", true, out ignored);
+                if (Exec("winget", "list --id " + id + " --exact --accept-source-agreements", false, out ignored) == 0)
+                {
+                    installed++;
+                    Ok(id + " installed");
+                }
+                else
+                {
+                    failed++;
+                    Warn(id + " could not be installed");
+                }
+            }
+            Ok("Runtimes checked: " + installed + " installed, " + present + " already there" + (failed > 0 ? ", " + failed + " failed" : ""));
+        }
+
+        private void Drivers()
+        {
+            Info("Asking Windows Update for drivers. This can take several minutes...");
+            const string script = @"
+$ErrorActionPreference = 'Stop'
+try {
+  $session = New-Object -ComObject Microsoft.Update.Session
+  $searcher = $session.CreateUpdateSearcher()
+  $result = $searcher.Search(""IsInstalled=0 and Type='Driver' and IsHidden=0"")
+  if ($result.Updates.Count -eq 0) { Write-Host '[ok] Your drivers are up to date'; exit 0 }
+  $list = New-Object -ComObject Microsoft.Update.UpdateColl
+  foreach ($u in $result.Updates) {
+    if (-not $u.EulaAccepted) { $u.AcceptEula() }
+    [void]$list.Add($u)
+    Write-Host ('Found: ' + $u.Title)
+  }
+  Write-Host ('Downloading ' + $list.Count + ' driver(s)...')
+  $dl = $session.CreateUpdateDownloader()
+  $dl.Updates = $list
+  [void]$dl.Download()
+  Write-Host 'Installing...'
+  $inst = $session.CreateUpdateInstaller()
+  $inst.Updates = $list
+  $res = $inst.Install()
+  for ($i = 0; $i -lt $list.Count; $i++) {
+    $code = $res.GetUpdateResult($i).ResultCode
+    if ($code -eq 2 -or $code -eq 3) { Write-Host ('[ok] Installed: ' + $list.Item($i).Title) }
+    else { Write-Host ('[!!] Failed: ' + $list.Item($i).Title) }
+  }
+  if ($res.RebootRequired) { Write-Host '[ok] Drivers done - restart your PC to finish' } else { Write-Host '[ok] Drivers done' }
+} catch {
+  Write-Host ('[!!] Driver update failed: ' + $_.Exception.Message)
+}
+";
+            PS(script);
         }
 
         private void RestartExplorer()
