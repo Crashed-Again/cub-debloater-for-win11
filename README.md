@@ -4,7 +4,7 @@
 
 Current version: **2.0**
 
-> **Status:** I (the AI that wrote this) could not run it on Windows, so treat new features as untested until you have tried them. Run it on a spare PC or make a backup first.
+> **Status:** Treat new features as untested until you have tried them. Run it on a spare PC or make a backup first.
 
 ---
 
