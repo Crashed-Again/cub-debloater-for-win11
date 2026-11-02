@@ -153,7 +153,8 @@ namespace Cub
         private readonly List<string> _customApps = new List<string>();
         private readonly List<WallpaperTile> _tiles = new List<WallpaperTile>();
 
-        private Panel _root, _main;
+        private BackdropPanel _root;
+        private TPanel _main;
         private Card _content, _side, _top, _bottom;
         private FlowLayoutPanel _appsFlow, _wpStrip;
         private NSelect _browser, _preset;
@@ -221,36 +222,59 @@ namespace Cub
         /// <summary>Lets a little of the desktop show through the whole window.</summary>
         private void ApplyLook()
         {
-            Opacity = On("ui_translucent") ? 0.94 : 1.0;
+            Opacity = On("ui_translucent") ? 0.96 : 1.0;
+            if (_root != null)
+            {
+                _root.ShowImage = On("ui_blur");
+                _root.Invalidate(true);
+            }
+        }
+
+        /// <summary>The window background is a blurred copy of the wallpaper that is currently selected.</summary>
+        private void UpdateBackdrop()
+        {
+            if (_root == null) return;
+            try
+            {
+                if (!string.IsNullOrEmpty(_wallpaper) && File.Exists(_wallpaper))
+                {
+                    using (Image full = Image.FromFile(_wallpaper)) _root.SetSource(full);
+                }
+                else
+                {
+                    using (Image thumb = WallpaperCatalog.LoadThumb(_wallpaperId)) _root.SetSource(thumb);
+                }
+            }
+            catch { _root.SetSource(null); }
         }
 
         // =========================================================== shell: sidebar, top bar, bottom bar
         private void BuildShell()
         {
-            _root = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Glass, Padding = new Padding(S(14)) };
+            _root = new BackdropPanel { Dock = DockStyle.Fill, Padding = new Padding(S(14)) };
             Controls.Add(_root);
 
             // dock order: Fill first, then the edges (the one added last sits outermost)
-            _main = new Panel { Dock = DockStyle.Fill, BackColor = Theme.Glass };
+            _main = new TPanel { Dock = DockStyle.Fill };
             _root.Controls.Add(_main);
-            _root.Controls.Add(new Panel { Dock = DockStyle.Left, Width = S(14), BackColor = Theme.Glass });
+            _root.Controls.Add(new TPanel { Dock = DockStyle.Left, Width = S(14) });
             BuildSidebar();
 
             _content = new Card
             {
-                Dock = DockStyle.Fill, Fill = Theme.Panel, BackColor = Theme.Glass, Radius = 18,
+                Dock = DockStyle.Fill, Fill = Theme.Panel, BackColor = Color.Transparent, Radius = 18,
                 Padding = new Padding(S(26), S(20), S(16), S(16))
             };
             _main.Controls.Add(_content);
-            _main.Controls.Add(new Panel { Dock = DockStyle.Top, Height = S(12), BackColor = Theme.Glass });
-            _main.Controls.Add(new Panel { Dock = DockStyle.Bottom, Height = S(12), BackColor = Theme.Glass });
+            _main.Controls.Add(new TPanel { Dock = DockStyle.Top, Height = S(12) });
+            _main.Controls.Add(new TPanel { Dock = DockStyle.Bottom, Height = S(12) });
             BuildTopBar();
             BuildBottomBar();
         }
 
         private void BuildSidebar()
         {
-            _side = new Card { Dock = DockStyle.Left, Width = S(248), Fill = Theme.Panel2, BackColor = Theme.Glass, Radius = 18 };
+            _side = new Card { Dock = DockStyle.Left, Width = S(248), Fill = Theme.Panel2, FillAlpha = 170, BorderColor = Color.FromArgb(48, 255, 255, 255), BackColor = Color.Transparent, Radius = 18 };
             _side.Resize += (s, e) => _side.Invalidate();
             _side.Paint += (s, e) =>
             {
@@ -298,7 +322,7 @@ namespace Cub
                 var nb = new NavButton
                 {
                     Text = name, IconKey = name, Left = S(12), Top = y, Width = S(248) - S(25), Height = S(46),
-                    Tag = name, BackColor = Theme.Panel2
+                    Tag = name, BackColor = Color.Transparent
                 };
                 string captured = name;
                 nb.Click += (s, e) => ShowPage(captured);
@@ -311,7 +335,7 @@ namespace Cub
 
         private void BuildTopBar()
         {
-            _top = new Card { Dock = DockStyle.Top, Height = S(72), Fill = Theme.Panel2, BackColor = Theme.Glass, Radius = 18 };
+            _top = new Card { Dock = DockStyle.Top, Height = S(72), Fill = Theme.Panel2, FillAlpha = 170, BorderColor = Color.FromArgb(48, 255, 255, 255), BackColor = Color.Transparent, Radius = 18 };
             _search = new TextBox
             {
                 BorderStyle = BorderStyle.None, BackColor = Theme.Input, ForeColor = Theme.Text, Font = Theme.Body,
@@ -371,12 +395,12 @@ namespace Cub
 
         private void BuildBottomBar()
         {
-            _bottom = new Card { Dock = DockStyle.Bottom, Height = S(78), Fill = Theme.Panel2, BackColor = Theme.Glass, Radius = 18 };
+            _bottom = new Card { Dock = DockStyle.Bottom, Height = S(78), Fill = Theme.Panel2, FillAlpha = 170, BorderColor = Color.FromArgb(48, 255, 255, 255), BackColor = Color.Transparent, Radius = 18 };
 
-            var lbl = new Label { Text = "Preset", ForeColor = Theme.Sub, BackColor = Theme.Panel2, AutoSize = true, Left = S(24), Top = S(29), Font = Theme.Body };
+            var lbl = new Label { Text = "Preset", ForeColor = Theme.Sub, BackColor = Color.Transparent, AutoSize = true, Left = S(24), Top = S(29), Font = Theme.Body };
             _bottom.Controls.Add(lbl);
 
-            _preset = new NSelect { Left = S(84), Top = S(19), Width = S(260), Height = S(40), BackColor = Theme.Panel2 };
+            _preset = new NSelect { Left = S(84), Top = S(19), Width = S(260), Height = S(40), BackColor = Color.Transparent };
             _preset.Items.AddRange(new object[]
             {
                 "Recommended (my setup)", "Light touch (look + AI only)", "Aggressive (everything on)", "Nothing (clear all)"
@@ -385,15 +409,15 @@ namespace Cub
             _preset.SelectionChangeCommitted += (s, e) => ApplyPreset(_preset.SelectedIndex);
             _bottom.Controls.Add(_preset);
 
-            var save = new NButton { Text = "Save profile", Left = S(360), Top = S(19), Width = S(124), Height = S(40), BackColor = Theme.Panel2 };
+            var save = new NButton { Text = "Save profile", Left = S(360), Top = S(19), Width = S(124), Height = S(40), BackColor = Color.Transparent };
             save.Click += (s, e) => SaveProfileDialog();
             _bottom.Controls.Add(save);
 
-            var load = new NButton { Text = "Load profile", Left = S(492), Top = S(19), Width = S(124), Height = S(40), BackColor = Theme.Panel2 };
+            var load = new NButton { Text = "Load profile", Left = S(492), Top = S(19), Width = S(124), Height = S(40), BackColor = Color.Transparent };
             load.Click += (s, e) => LoadProfileDialog();
             _bottom.Controls.Add(load);
 
-            _apply = new NButton { Text = "Apply changes", Primary = true, Width = S(200), Height = S(46), Top = S(16), BackColor = Theme.Panel2 };
+            _apply = new NButton { Text = "Apply changes", Primary = true, Width = S(200), Height = S(46), Top = S(16), BackColor = Color.Transparent };
             _apply.Click += (s, e) => OnApply();
             _bottom.Controls.Add(_apply);
 
@@ -524,7 +548,9 @@ namespace Cub
             AddToggle(p, "dark", "Appearance", "Dark mode", "Apps and Windows itself use the dark theme.", true);
             AddToggle(p, "left", "Appearance", "Taskbar icons on the left", "Windows 10 style alignment. Off = keep centered.", true);
             AddToggle(p, "thispc", "Appearance", "File Explorer opens to This PC", "Instead of Home / Quick access.", true);
-            AddToggle(p, "ui_translucent", "UI", "Slightly transparent window", "Lets a little of your desktop show through Cub itself.", true)
+            AddToggle(p, "ui_blur", "UI", "Blurred glass look", "Frosted sidebar and bars over a blurred copy of your wallpaper (follows the wallpaper you pick).", true)
+                .CheckedChanged += (s, e) => ApplyLook();
+            AddToggle(p, "ui_translucent", "UI", "Slightly transparent window", "Lets a little of your real desktop show through Cub itself.", true)
                 .CheckedChanged += (s, e) => ApplyLook();
             AddToggle(p, "wallpaper", "Appearance", "Set wallpaper", "Applies the wallpaper you pick below.", true);
 
@@ -853,6 +879,7 @@ namespace Cub
         // =========================================================== wallpaper
         private void UpdateWallpaperUi()
         {
+            UpdateBackdrop();
             foreach (WallpaperTile t in _tiles)
                 t.Selected = string.IsNullOrEmpty(_wallpaper) && (string)t.Tag == _wallpaperId;
             if (_wpLabel != null)
@@ -941,7 +968,7 @@ namespace Cub
         {
             foreach (string key in _t.Keys.ToList())
             {
-                if (key == "restore" || key == "ui_translucent") continue;
+                if (key == "restore" || key == "ui_translucent" || key == "ui_blur") continue;
                 bool v;
                 switch (idx)
                 {

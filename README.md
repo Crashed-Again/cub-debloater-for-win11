@@ -43,7 +43,8 @@ See "Build" below.
 ## What's new in 2.0
 
 - **New design** inspired by the tPay dashboard: floating rounded sidebar with icons, a top bar with a search box, one setting per line, lime-green accents.
-- **Slightly transparent window:** a little of your desktop shows through Cub. Switch it off with **Slightly transparent window** on the Appearance page. The title bar and window border take on the app's own dark colour (Windows 11), so there is no grey frame.
+- **Blurred glass look:** the window background is a heavily blurred, darkened copy of the wallpaper you picked, and the sidebar, top bar and bottom bar are frosted glass over it. It follows the wallpaper you select. Switch it off with **Blurred glass look** on the Appearance page.
+- **Slightly transparent window:** optional extra (on by default) that lets about 4% of your real desktop show through. The title bar and window border use the app's dark colour (Windows 11).
 - **Rounded everything:** dropdowns and text boxes are now rounded and dark like the rest of the app (no more square white boxes).
 - **Search** at the top finds any setting across all pages.
 - **Wallpaper picker:** 11 named wallpapers in a scrolling strip. The default is **Midnight Bloom**. You can still use your own image. The old wallpapers were removed.
@@ -106,7 +107,7 @@ The sidebar, file Properties and the .msi name follow it (2.0.0 is shown as "2.0
 
 | Page | What you can control |
 |---|---|
-| **Appearance** | Dark mode, slightly transparent window, taskbar icons left, Explorer opens to This PC, wallpaper picker (11 built-in or your own file), mouse acceleration off, Sticky Keys off, show file extensions (on by default), classic right-click menu (on by default) |
+| **Appearance** | Dark mode, blurred glass look, slightly transparent window, taskbar icons left, Explorer opens to This PC, wallpaper picker (11 built-in or your own file), mouse acceleration off, Sticky Keys off, show file extensions (on by default), classic right-click menu (on by default) |
 | **AI** | Remove Copilot, disable Recall and Click to Do, no web results in Start search |
 | **Apps** | Master switch plus one switch per built-in app (about 35), and a box to add your own package name (wildcards like `*Spotify*` work) |
 | **Start menu** | Hide Recommended, grid view for All apps, and which apps stay pinned |
@@ -158,7 +159,7 @@ Calculator, Clock, Notepad and the Microsoft Store are not in the removal list. 
 
 ## Things to know before you apply
 
-- **Look:** the matching title bar colour needs Windows 11. Windows cannot blur the inside of a normal desktop app without making its text and controls look washed out, so Cub uses plain transparency instead of blur. The UI uses Poppins if it is installed, otherwise Segoe UI.
+- **Look:** the matching title bar colour needs Windows 11. The blur is drawn by Cub itself from your wallpaper (Windows cannot blur the inside of a normal desktop app without making its text and controls look washed out), so it is not a live blur of whatever is behind the window. The UI uses Poppins if it is installed, otherwise Segoe UI.
 - **Default browser:** Windows does not let programs set the default browser silently. Cub installs the browser; you confirm it in Settings > Apps > Default apps.
 - **ms-gamingoverlay popup:** Cub turns Game Bar off and registers do-nothing handlers for `ms-gamingoverlay`, `ms-gamebar` and `ms-gamebarservices`. Sign out and back in if the popup still shows once.
 - **BitLocker:** drives get decrypted. This can take a long time and runs in the background.

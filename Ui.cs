@@ -214,18 +214,90 @@ namespace Cub
         }
     }
 
+    // ------------------------------------------------------------------ panel that may be see-through
+    internal sealed class TPanel : Panel
+    {
+        public TPanel()
+        {
+            SetStyle(ControlStyles.SupportsTransparentBackColor, true);
+            BackColor = Color.Transparent;
+        }
+    }
+
+    // ------------------------------------------------------------------ blurred wallpaper backdrop (the "glass")
+    /// <summary>
+    /// Paints a heavily blurred, darkened copy of the chosen wallpaper. Transparent child panels and cards show it
+    /// through, so frosted glass can be drawn on top without any Windows backdrop tricks (which wash out native controls).
+    /// </summary>
+    internal sealed class BackdropPanel : Panel
+    {
+        private Bitmap _blur;
+        public bool ShowImage = true;
+        public int Dim = 150;   // 0 = full brightness, 255 = black
+
+        public BackdropPanel()
+        {
+            DoubleBuffered = true;
+            ResizeRedraw = true;
+            BackColor = Theme.Glass;
+        }
+
+        /// <summary>The caller keeps ownership of <paramref name="src"/>; only a tiny copy is kept here.</summary>
+        public void SetSource(Image src)
+        {
+            Bitmap old = _blur;
+            _blur = null;
+            if (src != null)
+            {
+                // shrinking to a few dozen pixels and stretching back up with a smooth filter = a strong blur
+                int w = 40, h = Math.Max(8, (int)Math.Round(40.0 * src.Height / Math.Max(1, src.Width)));
+                var small = new Bitmap(w, h);
+                using (Graphics g = Graphics.FromImage(small))
+                {
+                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                    g.DrawImage(src, new Rectangle(0, 0, w, h));
+                }
+                _blur = small;
+            }
+            if (old != null) old.Dispose();
+            Invalidate(true);
+        }
+
+        protected override void OnPaintBackground(PaintEventArgs e)
+        {
+            Graphics g = e.Graphics;
+            if (!ShowImage || _blur == null)
+            {
+                using (var b = new SolidBrush(Theme.Glass)) g.FillRectangle(b, ClientRectangle);
+                return;
+            }
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            using (var ia = new System.Drawing.Imaging.ImageAttributes())
+            {
+                ia.SetWrapMode(WrapMode.TileFlipXY);   // no light edges when the small image is stretched
+                g.DrawImage(_blur, ClientRectangle, 0, 0, _blur.Width, _blur.Height, GraphicsUnit.Pixel, ia);
+            }
+            using (var b = new SolidBrush(Color.FromArgb(Dim, 6, 7, 6))) g.FillRectangle(b, ClientRectangle);
+        }
+    }
+
     // ------------------------------------------------------------------ rounded card
     internal class Card : Panel
     {
         public Color Fill = Theme.Card;
+        public int FillAlpha = 255;             // below 255 = frosted glass: the backdrop shows through
+        public Color BorderColor = Theme.Border;
         public int Radius = 12;
         public bool Outline = true;
 
         public Card()
         {
+            SetStyle(ControlStyles.SupportsTransparentBackColor, true);
             DoubleBuffered = true;
             ResizeRedraw = true;
-            BackColor = Theme.Panel;   // shows in the corners, so it must match whatever the card sits on
+            BackColor = Theme.Panel;   // shows in the corners, so it must match whatever the card sits on (or be Transparent)
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -234,8 +306,8 @@ namespace Cub
             var r = new Rectangle(0, 0, Width - 1, Height - 1);
             using (var p = Theme.Round(r, Theme.S(Radius)))
             {
-                using (var b = new SolidBrush(Fill)) e.Graphics.FillPath(b, p);
-                if (Outline) using (var pen = new Pen(Theme.Border)) e.Graphics.DrawPath(pen, p);
+                using (var b = new SolidBrush(Color.FromArgb(FillAlpha, Fill))) e.Graphics.FillPath(b, p);
+                if (Outline) using (var pen = new Pen(BorderColor)) e.Graphics.DrawPath(pen, p);
             }
             base.OnPaint(e);   // raises the Paint event: handlers draw ON TOP of the card
         }
@@ -250,7 +322,8 @@ namespace Cub
         public ToggleSwitch()
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
-                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw |
+                     ControlStyles.SupportsTransparentBackColor, true);
             Size = new Size(Theme.S(46), Theme.S(24));
             Cursor = Cursors.Hand;
             BackColor = Theme.Card;
@@ -279,7 +352,7 @@ namespace Cub
         {
             Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.Clear(BackColor);
+            if (BackColor.A == 255) g.Clear(BackColor);   // transparent = the parent already painted behind us
             var r = new Rectangle(0, 0, Width - 1, Height - 1);
             using (var p = Theme.Round(r, Height / 2))
             using (var b = new SolidBrush(_on ? Theme.Accent : Theme.Off))
@@ -301,7 +374,8 @@ namespace Cub
         public NButton()
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
-                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw |
+                     ControlStyles.SupportsTransparentBackColor, true);
             Cursor = Cursors.Hand;
             Font = Theme.Bold;
             Size = new Size(Theme.S(110), Theme.S(40));
@@ -316,7 +390,7 @@ namespace Cub
             Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
-            g.Clear(BackColor);
+            if (BackColor.A == 255) g.Clear(BackColor);   // transparent = the parent already painted behind us
             var r = new Rectangle(0, 0, Width - 1, Height - 1);
             Color fill, fore;
             if (Primary)
@@ -350,7 +424,8 @@ namespace Cub
         public NavButton()
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
-                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw |
+                     ControlStyles.SupportsTransparentBackColor, true);
             Cursor = Cursors.Hand;
             Font = Theme.Body;
             BackColor = Theme.Panel2;
@@ -370,7 +445,7 @@ namespace Cub
             Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
-            g.Clear(BackColor);
+            if (BackColor.A == 255) g.Clear(BackColor);   // transparent = the parent already painted behind us
             var inner = new Rectangle(Theme.S(2), Theme.S(2), Width - Theme.S(5), Height - Theme.S(5));
             if (_selected || _hover)
             {
@@ -397,7 +472,8 @@ namespace Cub
         public ThinProgress()
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
-                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw |
+                     ControlStyles.SupportsTransparentBackColor, true);
             Height = Theme.S(10);
         }
 
@@ -411,7 +487,7 @@ namespace Cub
         {
             Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.Clear(BackColor);
+            if (BackColor.A == 255) g.Clear(BackColor);   // transparent = the parent already painted behind us
             var track = new Rectangle(0, 0, Width - 1, Height - 1);
             using (var p = Theme.Round(track, Height / 2))
             using (var b = new SolidBrush(Color.FromArgb(40, 43, 39)))
@@ -437,7 +513,8 @@ namespace Cub
         public WallpaperTile()
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
-                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw |
+                     ControlStyles.SupportsTransparentBackColor, true);
             Cursor = Cursors.Hand;
             Font = Theme.Small;
             BackColor = Theme.Card;
@@ -458,7 +535,7 @@ namespace Cub
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.InterpolationMode = InterpolationMode.HighQualityBicubic;
             g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
-            g.Clear(BackColor);
+            if (BackColor.A == 255) g.Clear(BackColor);   // transparent = the parent already painted behind us
 
             int imgH = Width * 9 / 16;
             var img = new Rectangle(1, 1, Width - 3, imgH);
@@ -528,7 +605,8 @@ namespace Cub
         public NSelect()
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
-                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw |
+                     ControlStyles.SupportsTransparentBackColor, true);
             Cursor = Cursors.Hand;
             Font = Theme.Body;
             Size = new Size(Theme.S(240), Theme.S(40));
@@ -582,7 +660,7 @@ namespace Cub
             Graphics g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
-            g.Clear(BackColor);
+            if (BackColor.A == 255) g.Clear(BackColor);   // transparent = the parent already painted behind us
             var r = new Rectangle(0, 0, Width - 1, Height - 1);
             using (var p = Theme.Round(r, Theme.S(10)))
             {
